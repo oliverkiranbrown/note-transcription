@@ -1,18 +1,23 @@
 """Transcribe voice notes into a single Obsidian markdown file."""
 
 import argparse
+import os
 import re
 import shutil
 import sys
 from datetime import date, datetime, time
 from pathlib import Path
 
-VAULT = Path("~/Documents/Obsidian/MyVault").expanduser()
-NOTES_DIR = "Books"
-RECORDINGS_DIR = VAULT / "Media" / "Attachments"
-DEFAULT_SRC = Path("/Volumes/RECORDER")
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).with_name(".env"))
+
+VAULT = Path(os.environ.get("VAULT", "~/Documents/Obsidian/MyVault")).expanduser()
+NOTES_DIR = os.environ.get("NOTES_DIR", "Books")
+RECORDINGS_DIR = VAULT / os.environ.get("RECORDINGS_DIR", "Media/Attachments")
+DEFAULT_SRC = Path(os.environ.get("DEFAULT_SRC", "/Volumes/RECORDER"))
 AUDIO_SUFFIXES = {".mp3", ".wav", ".m4a"}
-PAGE_RE = re.compile(r"page\s+(\d+)", re.IGNORECASE)
+PAGE_RE = re.compile(r"page\s+(?:number\s+)?(\d+)", re.IGNORECASE)
 
 
 def fail(msg):
@@ -37,7 +42,12 @@ def find_files(src: Path, from_date: date, to_date: date) -> list[Path]:
 
 def heading(text: str, filename: str) -> str:
     m = PAGE_RE.search(text)
-    return f"## Page {m.group(1)}" if m else f"## {filename}"
+    return f"### Page {m.group(1)}" if m else f"### {filename}"
+
+
+def block(title: str, embed: str, text: str) -> str:
+    quote = "\n".join(f"> {ln}".rstrip() for ln in text.splitlines())
+    return f"{title}\n\n{embed}\n\n{quote}"
 
 
 def main():
@@ -65,12 +75,13 @@ def main():
         print(f"[{i}/{len(files)}] {f.name}")
         segments, _ = model.transcribe(str(f), language="en")
         text = "".join(s.text for s in segments).strip()
-        blocks.append(f"{heading(text, f.name)}\n- \n\n![[{f.name}]]\n\n{text}")
+        blocks.append(block(heading(text, f.name), f"![[{f.name}]]", text))
 
-    out_dir = VAULT / NOTES_DIR
+    out_dir = VAULT / NOTES_DIR.lstrip("/")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{args.title}.md"
-    out_path.write_text("\n\n".join(blocks) + "\n", encoding="utf-8")
+    body = f"#book\n\n## Background\n\n\n## Notes\n\n" + "\n\n".join(blocks) + "\n"
+    out_path.write_text(body, encoding="utf-8")
     print(out_path)
 
 

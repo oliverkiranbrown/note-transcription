@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Transcribe book voice notes into an Obsidian markdown file."
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = ["faster-whisper"]
+dependencies = ["faster-whisper", "python-dotenv", "av==14.2.0"]
 
 [project.scripts]
 make-book-notes = "make_book_notes:main"
