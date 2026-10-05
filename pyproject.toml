@@ -1,0 +1,17 @@
+[project]
+name = "note-transcription"
+version = "0.1.0"
+description = "Transcribe book voice notes into an Obsidian markdown file."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["faster-whisper"]
+
+[project.scripts]
+make-book-notes = "make_book_notes:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["make_book_notes"]
