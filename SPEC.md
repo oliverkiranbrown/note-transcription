@@ -25,15 +25,22 @@ make-book-notes "Book Title" --from 2026-09-01 --to 2026-09-20
 | `--to YYYY-MM-DD` | yes | End date, inclusive. |
 | `--src PATH` | no | Folder containing the audio files. Defaults to `DEFAULT_SRC`. |
 | `--model NAME` | no | Whisper model name. Defaults to `small.en`. |
+| `--output-format FMT` | no | Target audio format for vault copies. Defaults to `OUTPUT_FORMAT` (`opus`). Any format `ffmpeg` supports, e.g. `mp3`, `m4a`, `ogg`. |
+
+## Dependencies
+
+- Python 3.10+, `faster-whisper`, `python-dotenv` (Python packages).
+- `ffmpeg` must be on `$PATH` (system install, e.g. `brew install ffmpeg` / `apt install ffmpeg`). Used for audio conversion; not needed if every source file is already in the target format.
 
 ## Behaviour
 
-1. Recursively find audio files (`.mp3`, `.wav`, `.m4a`) under `--src`.
-2. Keep only files whose modified time (`st_mtime`, local time) falls between the start of `--from` and the end of `--to`, inclusive.
-3. Sort the remaining files by modified time, oldest first.
-4. Load the Whisper model once, then transcribe each file locally with `faster-whisper` (English only, CPU is fine).
-5. Write one markdown file to `VAULT / NOTES_DIR / "<title>.md"`. Overwrite if it exists; the audio is the source of truth, so the file is regenerated on each run.
-6. Print one progress line per file to stdout (e.g. `[3/12] REC0003.mp3`), then the output path at the end.
+1. Recursively find audio files (`.mp3`, `.wav`, `.m4a`, `.opus`, `.ogg`, `.flac`, `.aac`) under `--src`.
+2. If the source file's format differs from `--output-format`, transcode it with `ffmpeg` into a temp directory; otherwise use the file as-is. Copy the resulting file to `RECORDINGS_DIR`.
+3. Keep only files whose modified time (`st_mtime`, local time) falls between the start of `--from` and the end of `--to`, inclusive.
+4. Sort the remaining files by modified time, oldest first.
+5. Load the Whisper model once, then transcribe each **original** source file locally with `faster-whisper` (English only, CPU is fine). Transcription always runs on the original; conversion is only for the vault copy.
+6. Write one markdown file to `VAULT / NOTES_DIR / "<title>.md"`. Overwrite if it exists; the audio is the source of truth, so the file is regenerated on each run.
+7. Print one progress line per file to stdout (e.g. `[3/12] REC0003.wav → REC0003.opus`); omit the arrow when no conversion is needed. Print the output path at the end.
 
 ## Output format
 
@@ -63,6 +70,7 @@ Constants at the top of the script. No config file, no env vars.
 VAULT = Path("~/Documents/Obsidian/MyVault").expanduser()
 NOTES_DIR = "Books"
 DEFAULT_SRC = Path("/Volumes/RECORDER")
+OUTPUT_FORMAT = "opus"   # target format for vault copies; any ffmpeg-supported format
 ```
 
 ## Implementation constraints
